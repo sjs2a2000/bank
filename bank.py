@@ -49,7 +49,7 @@ if os.name == 'nt':
     LOCK_SH = 0 # the default
     LOCK_NB = win32con.LOCKFILE_FAIL_IMMEDIATELY
     _overlapped = pywintypes.OVERLAPPED(  )
-    class Lock(objec):
+    class Lock(object):
         # needs win32all to work on Windows        
         def lockf(file, flags):
             hfile = win32file._get_osfhandle(file.fileno(  ))
