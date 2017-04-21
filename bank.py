@@ -275,7 +275,7 @@ class User:
         return True
     
 class AccountingSystem(object):
-    ACTOR_TYPE = enum('ADMIN', 'CUST', 'HELP')
+    ACTOR_TYPE = enum('ADMINISTRATOR', 'CUSTOMER', 'HELP')
     CUST_ACTION_TYPE = enum('open','deposit','withdraw','transfer','balance')
     ADMIN_ACTION_TYPE = enum('restart', 'initialize')
     ADMIN_PASSWORD='admin' 
@@ -311,7 +311,9 @@ class AccountingSystem(object):
         return '\n'.join([str(key)+':'+value for key,value in prompt_type.reverse_mapping.items()])+'\n'
         
     def welcome(self):
-        msg='This is the piggy bank accounting system.\nAdmin can reset system via initialize.\nPlease choose who you are:\n'
+        msg='This is the Piggy Bank Accounting System Program.\nAdministrator can reset system via initialize action.\n'
+        msg+='Customer actions: deposit, withdrawl, transfer, create new account.\n\n'
+        msg+='Please choose who you are:\n'
         admin_or_cust = raw_input(msg+self.prompt_values(self.ACTOR_TYPE)+'=> ')
         return admin_or_cust
     
@@ -319,7 +321,7 @@ class AccountingSystem(object):
         passwd=None
         logger.warn('Force admin passwd re-entry for each action.')
         #if not self.User:
-        passwd = raw_input('please enter the admin password\n=> ')
+        passwd = raw_input('Please enter the admin password:\n=> ')
         self.User = User('admin', passwd,self.filestore)
         return raw_input(self.prompt_values(self.ADMIN_ACTION_TYPE))        
     
@@ -332,7 +334,7 @@ class AccountingSystem(object):
         not_finished='Y'
         while(not_finished=='Y'):
             try:
-                if int(actor) == self.ACTOR_TYPE.CUST:
+                if int(actor) == self.ACTOR_TYPE.CUSTOMER:
                     if not self.User:
                         name=raw_input('Please enter user name:\n=> ')
                         if name.lower()=='admin' or name.lower()=='':
@@ -341,17 +343,18 @@ class AccountingSystem(object):
                         self.User = User(name, passwd,self.filestore) 
                     action=self.cust_options()      
                     self.User.executeAction(self.CUST_ACTION_TYPE.reverse_mapping.get(int(action)), self.filestore)
-                elif int(actor) == self.ACTOR_TYPE.ADMIN:
+                    not_finished = raw_input('Do you need to do another transaction? Y or N\n=> ')
+                elif int(actor) == self.ACTOR_TYPE.ADMINISTRATOR:
                     logger.warn('User is admin:')
                     action=self.admin_options()
                     getattr(self, self.ADMIN_ACTION_TYPE.reverse_mapping[int(action)], lambda : None)()
+                    not_finished = raw_input('Do you need to do another transaction? Y or N\n=> ')
                 elif int(actor) == self.ACTOR_TYPE.HELP:
-                    print 'This is the piggy bank accounting system.\nAdmin can reset system via initialize.'
-                    print 'Customer can take specific actions'
+                    actor = self.welcome()
             except BaseException as err:
                 logger.error(str(err))
                 self.passwd=''
-            not_finished = raw_input('Do you need to do another transaction? Y or N\n=> ')        
+                not_finished = raw_input('Do you need to do another transaction? Y or N\n=> ')        
      
 def test_all_interactive():
     BankAccount.ExecuteAction('piggy2', '110000001', FileStore(), 'balance')
