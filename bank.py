@@ -1,10 +1,10 @@
 import json
 import sys
-import json
 import os
 import logging
 import shutil
 import tempfile
+import getpass
 
 '''
 README:
@@ -27,13 +27,21 @@ The above steps would make the program hardened against failure
 4. encrypt passwords
 '''
 
+console = logging.StreamHandler()
+logger = logging.getLogger(__name__)
+console = logging.StreamHandler()
+logger.addHandler(console)
 
-
-TEMPDIR=os.path.join(tempfile.gettempdir(),os.getlogin())
+TEMPDIR=""
+if os.name=='nt':
+    TEMPDIR=os.path.join(tempfile.gettempdir(),getpass.getuser())
+else:
+    TEMPDIR=os.path.join(tempfile.gettempdir(),os.getlogin())
+   
+                         
 if not os.path.exists(TEMPDIR):
     os.makedirs(TEMPDIR)
 
-logger = logging.getLogger(__name__)
 
 #enums
 def enum(*sequential, **named):
@@ -50,11 +58,13 @@ if os.name == 'nt':
     LOCK_NB = win32con.LOCKFILE_FAIL_IMMEDIATELY
     _overlapped = pywintypes.OVERLAPPED(  )
     class Lock(object):
-        # needs win32all to work on Windows        
+        # needs win32all to work on Windows 
+        @staticmethod
         def lockf(file, flags):
             hfile = win32file._get_osfhandle(file.fileno(  ))
             win32file.LockFileEx(hfile, flags, 0, 0xffff0000, _overlapped)
-
+        
+        @staticmethod
         def unlockf(file):
             hfile = win32file._get_osfhandle(file.fileno(  ))
             win32file.UnlockFileEx(hfile, 0, 0xffff0000, _overlapped)
@@ -121,15 +131,15 @@ class BankAccount(object):
     def ExecuteAction(cls, name, account, filestore, action):
         args=[]
         if action in ['deposit', 'withdraw']:
-            args.append(float(input('please enter amount\n')))
+            args.append(float(raw_input('please enter amount\n')))
             with open(cls.FileName(filestore,account), 'r+') as outfilestore: 
                 filestore.locker.lockf(outfilestore,LOCK_EX)               
                 ba=BankAccount(name, account, outfilestore) 
                 success=getattr(ba , action)(*args)                 
                 filestore.locker.unlockf(outfilestore)
         elif action=='transfer':
-            args.append(float(input('please enter amount\n')))
-            args.append(input('please enter account to transfer to\n'))
+            args.append(float(raw_input('please enter amount\n')))
+            args.append(raw_input('please enter account to transfer to\n'))
             with open(cls.FileName(filestore,account), 'r+') as a, open(cls.FileName(filestore,args[1]),'r+') as b:
                 if int(account) <int(args[1]):
                     filestore.locker.lockf(a,LOCK_EX)
@@ -187,7 +197,7 @@ class BankAccount(object):
             data = json.load(outfile)
             data['max_account']=data['max_account']+1                              
             json.dump(data, outfile)
-            self.locker.unlockf(outfile)
+            filestore.locker.unlockf(outfile)
         return data['max_account']
         
     @classmethod
@@ -227,14 +237,14 @@ class User:
         return self.user_data.get('accounts')
 
     def name(self):
-        return relf.user_data.get('name')
+        return self.user_data.get('name')
 
     def executeAction(self, action, filestore):
         if action=='open':
             self.open(filestore)
         else:            
             accountenum = enum(*self.accounts())            
-            choice = input('Please select an account\n' + '\n'.join([str(key)+': '+value for key,value in accountenum.reverse_mapping.items()])+'\n')
+            choice = raw_input('Please select an account\n' + '\n'.join([str(key)+': '+value for key,value in accountenum.reverse_mapping.items()])+'\n')
             account = accountenum.reverse_mapping.get(int(choice))
             logger.warn('account selected is '+ str(account))
             BankAccount.ExecuteAction(self.name, account, filestore, action)            
@@ -246,14 +256,13 @@ class User:
         BankAccount.WriteAccount(account, filestore)
 
     def writeuser(self, account, filestore):        
-        with open(filename, 'w') as userfile:
+        with open(self.userfile, 'w') as filename:
             filestore.locker.lockf(filename,LOCK_EX)
-            data = self.read(filename)
+            data = json.load(filename)
             data[self.user]['accounts'] = self.accounts().append(account)
             self.user_data = data[self.user]                               
-            json.dump(data, outfile)
-            if uselock:
-                filestore.locker.unlockf(filename)
+            json.dump(data, filename)
+            filestore.locker.unlockf(filename)
         return True
     
 class AccountingSystem(object):
@@ -290,17 +299,17 @@ class AccountingSystem(object):
         return '\n'.join([str(key)+':'+value for key,value in prompt_type.reverse_mapping.items()])+'\n'
         
     def welcome(self):
-        admin_or_cust = input('please choose who you are:\n'+self.prompt_values(self.ACTOR_TYPE))
+        admin_or_cust = raw_input('please choose who you are:\n'+self.prompt_values(self.ACTOR_TYPE))
         return admin_or_cust
     
     def admin_options(self):
         if not self.User:
-            passwd = input('please enter the admin password\n')
+            passwd = raw_input('please enter the admin password\n')
         self.User = User('admin', passwd,self.filestore)
-        return input(self.prompt_values(self.ADMIN_ACTION_TYPE))        
+        return raw_input(self.prompt_values(self.ADMIN_ACTION_TYPE))        
     
     def cust_options(self):
-        return input('please select an action\n'+self.prompt_values(self.CUST_ACTION_TYPE))
+        return raw_input('please select an action\n'+self.prompt_values(self.CUST_ACTION_TYPE))
     
     def prompt(self):
         actor = self.welcome()
@@ -310,8 +319,10 @@ class AccountingSystem(object):
             try:
                 if int(actor) == self.ACTOR_TYPE.CUST:
                     if not self.User:
-                        name=input('please enter user name\n')
-                        passwd=input('please enter the access code\n')               
+                        name=raw_input('please enter user name\n')
+                        print name
+                        passwd=raw_input('please enter the access code\n') 
+                        print passwd
                         self.User = User(name, passwd,self.filestore) 
                     action=self.cust_options()                    
                     self.User.executeAction(self.CUST_ACTION_TYPE.reverse_mapping.get(int(action)), self.filestore)
@@ -321,7 +332,7 @@ class AccountingSystem(object):
             except BaseException as err:
                 logger.error(str(err))
                 self.passwd=''
-            not_finished = input('do you need to do something else? Y or N\n')        
+            not_finished = raw_input('do you need to do something else? Y or N\n')        
      
 def test_all_interactive():
     BankAccount.ExecuteAction('piggy2', '110000001', FileStore(), 'balance')
@@ -333,5 +344,6 @@ def test_noninteractive():
     pass
 
 if __name__=='__main__':
+    print TEMPDIR
     AccountingSystem().prompt()
     
