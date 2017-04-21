@@ -132,18 +132,17 @@ class BankAccount(object):
     @classmethod
     def ExecuteAction(cls, name, account, filestore, action):
         args=[]
-        print 'testing'
         success=-1
         if action in ['deposit', 'withdraw']:
-            args.append(float(raw_input('please enter amount\n')))
+            args.append(float(raw_input('Please enter amount:\n=> ')))
             with open(cls.FileName(filestore,account), 'r+') as outfilestore: 
                 filestore.locker.lockf(outfilestore,LOCK_EX)               
                 ba=BankAccount(name, account, outfilestore) 
                 success=getattr(ba , action)(*args)                 
                 filestore.locker.unlockf(outfilestore)
         elif action=='transfer':
-            args.append(float(raw_input('please enter amount\n')))
-            args.append(raw_input('please enter account to transfer to\n'))
+            args.append(float(raw_input('Please enter amount:\n=> ')))
+            args.append(raw_input('Please enter account to transfer to:\n=> '))
             with open(cls.FileName(filestore,account), 'r+') as a, open(cls.FileName(filestore,args[1]),'r+') as b:
                 if int(account) <int(args[1]):
                     filestore.locker.lockf(a,LOCK_EX)
@@ -156,13 +155,13 @@ class BankAccount(object):
                 filestore.locker.unlockf(a)        
                 filestore.locker.unlockf(b)        
         else:
-            logger.warn('unrecognized action %s' % (action))
+            #logger.warn('unrecognized action %s' % (action))
             data = filestore.read(cls.FileName(filestore,account), uselock=True)
             ba=BankAccount(name, account, data=data) 
             success=getattr(ba, action)()
             
         if success >=0 :
-            logger.warn('Action: %s succeeded, account:%s  balance is %d' %(action, account, success))
+            logger.warn('ACTION: %s succeeded, ACCOUNT:%s  BALANCE is %d' %(action.upper(), account, success))
         else:
             logger.error('Action: %s failed' % action)
         
@@ -197,26 +196,19 @@ class BankAccount(object):
     @staticmethod
     def GenerateAccountNumber(filestore):
         filename=FileStore.ACCOUNT_MAX
-        logger.warn('generating new account number')
         with open(filename, 'r+') as outfile:
             filestore.locker.lockf(outfile,LOCK_EX)
-            logger.warn('jason load: %s' % (filename))
             data = json.load(outfile)
-            logger.warn('%s' % (str(data)))
             data['max_account']=data['max_account']+1   
-            logger.warn('writing back file for max account %s' % str(data['max_account'])) 
-            logger.warn('%s' % (str(data))) 
             outfile.seek(0)                         
             json.dump(data, outfile)
             outfile.truncate()
-            logger.warn('json dump done')
             filestore.locker.unlockf(outfile)
-        logger.warn('new account = maxaccount = %s' % (data['max_account']))
         return data['max_account']
         
     @classmethod
     def WriteAccount(cls, account, filestore):
-        outfile=cls.FileName(filestore,account)
+        outfile=cls.FileName(filestore,account)      
         data = {'account': account,'currency':'usd','balance':0}
         filestore.write(outfile, data)
         return True
@@ -227,13 +219,13 @@ class User:
     def __init__(self, user, passwd, filestore):        
         self.user_data={}
         self.user=user
-        userfile =os.path.join(FileStore.USER_DIR,self.user)
-        if os.path.exists(userfile):
-            self.user_data=filestore.read(userfile, uselock=True)
+        self.userfile =os.path.join(FileStore.USER_DIR,self.user)
+        if os.path.exists(self.userfile):
+            self.user_data=filestore.read(self.userfile, uselock=True)
         elif user=='admin':
             self.user_data= {'name':'admin','pin':'1234'}
         else:
-            logger.warn(userfile + ' does not exist')
+            logger.warn(self.userfile + ' does not exist')
             raise BaseException('user does not exist')        
         if not self.isPassword(passwd):
             raise  BaseException('password is incorrect')
@@ -254,36 +246,36 @@ class User:
         return self.user_data.get('name')
 
     def executeAction(self, action, filestore):
-        print 'test this'
         if action=='open':
-            logger.warn('open')
             self.open(filestore)
         else:            
             accountenum = enum(*self.accounts())            
-            choice = raw_input('Please select an account\n' + '\n'.join([str(key)+': '+value for key,value in accountenum.reverse_mapping.items()])+'\n')
+            choice = raw_input('Please select an account:\n' + '\n'.join([str(key)+': '+value for key,value in accountenum.reverse_mapping.items()])+'\n=> ')
             account = accountenum.reverse_mapping.get(int(choice))
-            logger.warn('account selected is '+ str(account))
+            logger.warn('Account selected is '+ str(account))
             if account:
                 BankAccount.ExecuteAction(self.name, account, filestore, action)
 
     def open(self, filestore):
         account = BankAccount.GenerateAccountNumber(filestore)
-        logger.warn('new account = %s' % account)
+        account=str(account)
+        logger.warn('New account = %s' % account)
         self.writeuser(account,filestore)
         BankAccount.WriteAccount(account, filestore)
 
-    def writeuser(self, account, filestore):        
-        with open(self.userfile, 'w') as filename:
+    def writeuser(self, account, filestore):      
+        with open(self.userfile, 'r+') as filename:
             filestore.locker.lockf(filename,LOCK_EX)
-            data = json.load(filename)
-            data[self.user]['accounts'] = self.accounts().append(account)
-            self.user_data = data[self.user]                               
-            json.dump(data, filename)
+            self.user_data = json.load(filename)
+            self.accounts().append(account)
+            filename.seek(0)                      
+            json.dump(self.user_data, filename)
+            filename.truncate()
             filestore.locker.unlockf(filename)
         return True
     
 class AccountingSystem(object):
-    ACTOR_TYPE = enum('ADMIN', 'CUST')
+    ACTOR_TYPE = enum('ADMIN', 'CUST', 'HELP')
     CUST_ACTION_TYPE = enum('open','deposit','withdraw','transfer','balance')
     ADMIN_ACTION_TYPE = enum('restart', 'initialize')
     ADMIN_PASSWORD='admin' 
@@ -297,22 +289,20 @@ class AccountingSystem(object):
                      
     def initialize(self, restart=False):
         if not restart:
-            logger.warn('initializing system, remove all files')
+            logger.warn('Initializing system, remove all files')
             self.filestore.remove_all()   
-            logger.warn('write initial account max file')
             self.filestore.write(FileStore.ACCOUNT_MAX, {'max_account': 110000000})  
-            logger.warn('provide initial account data')
+            logger.warn('Provide initial account data:')
             data = {'admin' : {  'name': '', 'pin': '1234', },
                     'piggy1' : { 'name':'pig1', 'pin': '1234', 'accounts' : ['110000000'], 'is_locked' : False },
                     'piggy2' : { 'name':'pig2', 'pin': '1234', 'accounts' : ['110000001'], 'is_locked' : False },
                    }
-            logger.warn('write initial user/account data\n %s' % (str(data)))
+            logger.warn('Base user and account data:\n %s' % (str(data)))
             for user, value in data.items():
                 self.filestore.write(os.path.join(FileStore.USER_DIR,user), value)
                 accounts = value.get('accounts',[])
                 for account in accounts:
                     self.filestore.write(os.path.join(FileStore.ACCOUNT_DIR,account), {'account' : account, 'currency':'usd','balance':0})
-            logger.warn('finished writing initial account/user data') 
         else:
             #just remove locks
             pass
@@ -321,48 +311,47 @@ class AccountingSystem(object):
         return '\n'.join([str(key)+':'+value for key,value in prompt_type.reverse_mapping.items()])+'\n'
         
     def welcome(self):
-        admin_or_cust = raw_input('please choose who you are:\n'+self.prompt_values(self.ACTOR_TYPE))
+        msg='This is the piggy bank accounting system.\nAdmin can reset system via initialize.\nPlease choose who you are:\n'
+        admin_or_cust = raw_input(msg+self.prompt_values(self.ACTOR_TYPE)+'=> ')
         return admin_or_cust
     
     def admin_options(self):
         passwd=None
-        logger.warn('force admin passwd re-entry for each action')
+        logger.warn('Force admin passwd re-entry for each action.')
         #if not self.User:
-        passwd = raw_input('please enter the admin password\n')
+        passwd = raw_input('please enter the admin password\n=> ')
         self.User = User('admin', passwd,self.filestore)
         return raw_input(self.prompt_values(self.ADMIN_ACTION_TYPE))        
     
     def cust_options(self):
-        print 'cust_options'
-        action=raw_input('please select an action\n'+self.prompt_values(self.CUST_ACTION_TYPE))
-        print 'action=', action
+        action=raw_input('Please select a customer action:\n'+self.prompt_values(self.CUST_ACTION_TYPE).upper()+'=> ')
         return action
     
     def prompt(self):
         actor = self.welcome()
-        #logger.warn('type: %s ' % actor)
         not_finished='Y'
         while(not_finished=='Y'):
-            logger.warn('Next selection')
             try:
                 if int(actor) == self.ACTOR_TYPE.CUST:
                     if not self.User:
-                        name=raw_input('please enter user name\n')
+                        name=raw_input('Please enter user name:\n=> ')
                         if name.lower()=='admin' or name.lower()=='':
                             raise BaseException('User: \"%s\" cannot be a customer'% (name))
-                        passwd=raw_input('please enter the access code\n') 
+                        passwd=raw_input('Please enter the access code:\n=> ') 
                         self.User = User(name, passwd,self.filestore) 
-                    action=self.cust_options()  
-                    logger.warn('executing action %s' % (str(action)))
+                    action=self.cust_options()      
                     self.User.executeAction(self.CUST_ACTION_TYPE.reverse_mapping.get(int(action)), self.filestore)
                 elif int(actor) == self.ACTOR_TYPE.ADMIN:
-                    logger.warn('user is %s' % str(actor))
+                    logger.warn('User is admin:')
                     action=self.admin_options()
                     getattr(self, self.ADMIN_ACTION_TYPE.reverse_mapping[int(action)], lambda : None)()
+                elif int(actor) == self.ACTOR_TYPE.HELP:
+                    print 'This is the piggy bank accounting system.\nAdmin can reset system via initialize.'
+                    print 'Customer can take specific actions'
             except BaseException as err:
                 logger.error(str(err))
                 self.passwd=''
-            not_finished = raw_input('do you need to do something else? Y or N\n')        
+            not_finished = raw_input('Do you need to do another transaction? Y or N\n=> ')        
      
 def test_all_interactive():
     BankAccount.ExecuteAction('piggy2', '110000001', FileStore(), 'balance')
@@ -376,8 +365,8 @@ def test_noninteractive():
 #TODO: cannot choose customer without system init
 #TODO: describe process
 #TOOO: what is restart
-
+#TODO: add help sutomer action type
 if __name__=='__main__':
-    print TEMPDIR
+    #print TEMPDIR
     AccountingSystem().prompt()
     
