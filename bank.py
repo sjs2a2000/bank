@@ -26,11 +26,12 @@ The above steps would make the program hardened against failure
 3. add more tests
 4. encrypt passwords
 '''
-
-console = logging.StreamHandler()
+logging.basicConfig()
+#console = logging.StreamHandler()
 logger = logging.getLogger(__name__)
-console = logging.StreamHandler()
-logger.addHandler(console)
+logger.info('Starting logger for...') 
+#console = logging.StreamHandler()
+#logger.addHandler(console)
 
 TEMPDIR=""
 if os.name=='nt':
@@ -48,6 +49,7 @@ def enum(*sequential, **named):
     enums = dict(zip(sequential, range(len(sequential))), **named)
     reverse = dict((value, key) for key, value in enums.items())
     enums['reverse_mapping'] = reverse    
+    print enums
     return( type('Enum', (), enums))
 
 #file locking
@@ -247,7 +249,8 @@ class User:
             choice = raw_input('Please select an account\n' + '\n'.join([str(key)+': '+value for key,value in accountenum.reverse_mapping.items()])+'\n')
             account = accountenum.reverse_mapping.get(int(choice))
             logger.warn('account selected is '+ str(account))
-            BankAccount.ExecuteAction(self.name, account, filestore, action)            
+            if account:
+                BankAccount.ExecuteAction(self.name, account, filestore, action)
 
     def open(self, filestore):
         account = BankAccount.GenerateAccountNumber(filestore)
@@ -320,9 +323,7 @@ class AccountingSystem(object):
                 if int(actor) == self.ACTOR_TYPE.CUST:
                     if not self.User:
                         name=raw_input('please enter user name\n')
-                        print name
                         passwd=raw_input('please enter the access code\n') 
-                        print passwd
                         self.User = User(name, passwd,self.filestore) 
                     action=self.cust_options()                    
                     self.User.executeAction(self.CUST_ACTION_TYPE.reverse_mapping.get(int(action)), self.filestore)
