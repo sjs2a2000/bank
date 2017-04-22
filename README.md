@@ -18,6 +18,7 @@
 1. initialize - creates underlying data system requires to start up
 2. all users list - view all user names
 3. restart - ignore for now
+4. create new user
 
 # Customer Actions
 1. deposit - adds money to a selected account
