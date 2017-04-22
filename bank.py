@@ -323,7 +323,7 @@ class AccountingSystem(object):
         #if not self.User:
         passwd = raw_input('Please enter the admin password:\n=> ')
         self.User = User('admin', passwd,self.filestore)
-        return raw_input(self.prompt_values(self.ADMIN_ACTION_TYPE))        
+        return raw_input('Select an action:\n'+self.prompt_values(self.ADMIN_ACTION_TYPE)+'=> ')        
     
     def cust_options(self):
         action=raw_input('Please select a customer action:\n'+self.prompt_values(self.CUST_ACTION_TYPE).upper()+'=> ')
@@ -366,9 +366,7 @@ def test_noninteractive():
     pass
 
 #TODO: cannot choose customer without system init
-#TODO: describe process
-#TOOO: what is restart
-#TODO: add help sutomer action type
+#TODO: create new user type action as admin
 if __name__=='__main__':
     #print TEMPDIR
     AccountingSystem().prompt()
