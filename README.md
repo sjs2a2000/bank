@@ -1,8 +1,8 @@
 # Piggy Bank Program
-- two types of customers, ADMIN or Customer
+- Two types of customers: ADMIN or Customer
 - Default users: admin, piggy1, piggy2
-- ability to create new users as admin
-- ability to initialize system as admin
+- Ability to create new users as admin
+- Ability to initialize system as admin
 
 # How to get Started
 1. log in as "admin" with password "1234"
@@ -11,5 +11,16 @@
 4. log in as a customer, piggy1 or pigggy2 and use pin 1234
 
 # Additional Details
-all defualt pins are "1234"
-as admin you can create new users
+- all defualt pins are "1234"
+- as admin you can create new users
+
+# Admin Actions
+1. initialize - creates underlying data system requires to start up
+2. all users list - view all user names
+3. restart - ignore for now
+
+# Customer Actions
+1. deposit - adds money to a selected account
+2. withdrawl - remvoews money from a selected account
+3. open - opens new account
+4. transfer - move money from one user account to another
