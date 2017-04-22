@@ -1,8 +1,10 @@
 # Piggy Bank Program
-- Two types of customers: ADMIN or Customer
-- Default users: admin, piggy1, piggy2
-- Ability to create new users as admin
-- Ability to initialize system as admin
+This is the Piggy Bank Accounting System Program.
+There two main actors:
+- Administrator who can initialize action, see all users, or create new users.
+- Customer who can deposit money, withdrawl money, or transfer money, and create new account.
+
+The default users are admin, piggy1, and piggy2.
 
 # How to get Started
 ## Set up System
