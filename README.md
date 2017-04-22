@@ -1,5 +1,5 @@
 # Piggy Bank Program
-This is the Piggy Bank Accounting System Program.
+This is the Piggy Bank Accounting System Program.   
 There two main actors:
 - Administrator who can initialize action, see all users, or create new users.
 - Customer who can deposit money, withdrawl money, or transfer money, and create new account.
