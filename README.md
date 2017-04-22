@@ -5,6 +5,10 @@ There two main actors:
 - Customer who can deposit money, withdrawl money, or transfer money, and create new account.
 
 The default users are admin, piggy1, and piggy2.
+The same user can login multiple times without issue.
+Multiple users can be logged in at once. 
+The only limitation is the logins need to be done on the same device.
+A filestore with locking is being used to store the data.
 
 # How to get Started
 ## Set up System
