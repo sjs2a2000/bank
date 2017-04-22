@@ -6,7 +6,7 @@
 
 # How to get Started
 ## Set up System
-1. start program: python bank.py
+1. start program => python bank.py
 ```
 This is the Piggy Bank Accounting System Program.
 Administrator can reset system via initialize action.
@@ -26,14 +26,14 @@ Select an action:
 2:NEWUSER
 3:USERLIST
 ```
-3. select "Initilize" option
+3. select "INITIALIZE" option
 4. log out
 
 ### Admin Actions
-1. initialize - creates underlying data system requires to start up
-2. all users list - view all user names
-3. restart - ignore for now
-4. create new user
+0. RESTART - Ignore for now
+1. INITIALIZE - creates underlying data system requires to start up
+2. NEWUSER - create new user
+3. USERLIST - view all user names
 
 ## Access Customer Actions
 1. log in as a customer, piggy1 or pigggy2 and use pin 1234
@@ -56,10 +56,10 @@ Please select a customer action:
 4:BALANCE
 ```
 ### Customer Actions
-1. deposit - adds money to a selected account
-2. withdrawl - remvoews money from a selected account
-3. open - opens new account
-4. transfer - move money from one user account to another
+1. DEPOSIT - adds money to a selected account
+2. WITHDRAWL - remvoews money from a selected account
+3. OPEN - opens new account
+4. TRANSFER - move money from one user account to another
 
 # Additional Details
 - all defualt pins are "1234"
