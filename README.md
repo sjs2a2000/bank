@@ -18,7 +18,7 @@ Please choose who you are:
 2:HELP
 3:EXIT
 ```   
-3. log in as "administrator" selecting option 0 with password "1234"
+2. log in as "administrator" selecting option 0 with password "1234"
 ```
 Select an action:
 0:RESTART
@@ -26,8 +26,14 @@ Select an action:
 2:NEWUSER
 3:USERLIST
 ```
-2. select "Initilize" option
-3. log out
+3. select "Initilize" option
+4. log out
+
+### Admin Actions
+1. initialize - creates underlying data system requires to start up
+2. all users list - view all user names
+3. restart - ignore for now
+4. create new user
 
 ## Access Customer Actions
 1. log in as a customer, piggy1 or pigggy2 and use pin 1234
@@ -49,18 +55,12 @@ Please select a customer action:
 3:TRANSFER
 4:BALANCE
 ```
-# Additional Details
-- all defualt pins are "1234"
-- as admin you can create new users
-
-# Admin Actions
-1. initialize - creates underlying data system requires to start up
-2. all users list - view all user names
-3. restart - ignore for now
-4. create new user
-
-# Customer Actions
+### Customer Actions
 1. deposit - adds money to a selected account
 2. withdrawl - remvoews money from a selected account
 3. open - opens new account
 4. transfer - move money from one user account to another
+
+# Additional Details
+- all defualt pins are "1234"
+- as admin you can create new users
