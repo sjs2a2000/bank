@@ -186,10 +186,11 @@ class BankAccount(object):
     def balance(self):
          return self.account_data.get('balance',0.0)
 
+    #TODO: what if the withdraw succeeds and bank acount fails what about rollback
     def transfer(self, amount, account_to,filestore_to):
         if self.balance()>=amount and amount>0:
-            b1=self.withdraw(amount)
-            b2=BankAccount('to',account_to, filestore_to).deposit(amount)            
+            self.withdraw(amount)
+            BankAccount('to',account_to, filestore_to).deposit(amount)            
             return self.balance()
         return -1
         
@@ -214,23 +215,29 @@ class BankAccount(object):
         return True
         
     
-#TODO: password should be blocked
+#TODO: once user logs in we should note it and force logout when done
 class User:
-    def __init__(self, user, passwd, filestore):        
+    def __init__(self, user, passwd, filestore, create=False):        
         self.user_data={}
         self.user=user
         self.userfile =os.path.join(FileStore.USER_DIR,self.user)
         if os.path.exists(self.userfile):
+            if create:
+                logger.warn(' user exists, please choose another user name')
+                raise BaseException('user name exists')
             self.user_data=filestore.read(self.userfile, uselock=True)
         elif user=='admin':
             self.user_data= {'name':'admin','pin':'1234'}
+        elif create:
+            self.user_data={ 'name': user, 'pin': passwd, 'accounts' : [], 'is_locked' : False }
+            self.open(filestore, create=True)
         else:
             logger.warn(self.userfile + ' does not exist')
             raise BaseException('user does not exist')        
         if not self.isPassword(passwd):
             raise  BaseException('password is incorrect')
-        #if isUserLoggedIn(user):
-        #    raise 'user already loggedin'        
+        #if self.isUserLoggedIn(user):
+        #   raise 'user already loggedin'        
 
     def isUserLoggedIn(self):
         return self.user_data.get('is_locked',False)==True
@@ -256,28 +263,32 @@ class User:
             if account:
                 BankAccount.ExecuteAction(self.name, account, filestore, action)
 
-    def open(self, filestore):
+    def open(self, filestore, create=False):
         account = BankAccount.GenerateAccountNumber(filestore)
         account=str(account)
-        logger.warn('New account = %s' % account)
-        self.writeuser(account,filestore)
+        if not create:
+            logger.warn('Creating New account = %s for user: %s' % (account, self.user))
+        self.writeuser(account,filestore, create)
         BankAccount.WriteAccount(account, filestore)
 
-    def writeuser(self, account, filestore):      
-        with open(self.userfile, 'r+') as filename:
+    def writeuser(self, account, filestore, create=False): 
+        logger.warn('Creating user %s with account: %s' % (self.user, account))
+        code='r+' if not create else 'w'
+        with open(self.userfile, code) as filename:
             filestore.locker.lockf(filename,LOCK_EX)
-            self.user_data = json.load(filename)
+            if not create:
+                self.user_data = json.load(filename)
+                filename.seek(0)
             self.accounts().append(account)
-            filename.seek(0)                      
             json.dump(self.user_data, filename)
             filename.truncate()
             filestore.locker.unlockf(filename)
         return True
     
 class AccountingSystem(object):
-    ACTOR_TYPE = enum('ADMINISTRATOR', 'CUSTOMER', 'HELP')
+    ACTOR_TYPE = enum('ADMINISTRATOR', 'CUSTOMER', 'HELP','EXIT')
     CUST_ACTION_TYPE = enum('open','deposit','withdraw','transfer','balance')
-    ADMIN_ACTION_TYPE = enum('restart', 'initialize')
+    ADMIN_ACTION_TYPE = enum('restart', 'initialize', 'newuser', 'userlist')
     ADMIN_PASSWORD='admin' 
 
     def __init__(self):
@@ -304,9 +315,18 @@ class AccountingSystem(object):
                 for account in accounts:
                     self.filestore.write(os.path.join(FileStore.ACCOUNT_DIR,account), {'account' : account, 'currency':'usd','balance':0})
         else:
-            #just remove locks
+            #TODO: cleanup such as remove locks if invalid state
             pass
-
+    
+    def newuser(self):
+        name = raw_input('Please enter a new user name => ')
+        pin = raw_input('Please enter a new pin => ')
+        User(name, pin,self.filestore, create=True) 
+    
+    def userlist(self):  
+        users = [f for f in os.listdir(FileStore.USER_DIR) if os.path.isfile(os.path.join(FileStore.USER_DIR, f))]
+        print users
+        
     def prompt_values(self, prompt_type):
         return '\n'.join([str(key)+':'+value for key,value in prompt_type.reverse_mapping.items()])+'\n'
         
@@ -323,7 +343,7 @@ class AccountingSystem(object):
         #if not self.User:
         passwd = raw_input('Please enter the admin password:\n=> ')
         self.User = User('admin', passwd,self.filestore)
-        return raw_input('Select an action:\n'+self.prompt_values(self.ADMIN_ACTION_TYPE)+'=> ')        
+        return raw_input('Select an action:\n'+self.prompt_values(self.ADMIN_ACTION_TYPE).upper()+'=> ')        
     
     def cust_options(self):
         action=raw_input('Please select a customer action:\n'+self.prompt_values(self.CUST_ACTION_TYPE).upper()+'=> ')
@@ -351,11 +371,18 @@ class AccountingSystem(object):
                     not_finished = raw_input('Do you need to do another transaction? Y or N\n=> ')
                 elif int(actor) == self.ACTOR_TYPE.HELP:
                     actor = self.welcome()
+                elif int(actor) == self.ACTOR_TYPE.EXIT:
+                    print 'Exiting...'
+                    return
+                else:
+                    print 'invalid user type selection!'
+                    actor = self.welcome()
             except BaseException as err:
                 logger.error(str(err))
                 self.passwd=''
                 not_finished = raw_input('Do you need to do another transaction? Y or N\n=> ')        
-     
+        print 'Exiting...'
+        
 def test_all_interactive():
     BankAccount.ExecuteAction('piggy2', '110000001', FileStore(), 'balance')
     BankAccount.ExecuteAction('piggy2', '110000001', FileStore(), 'deposit')
@@ -365,8 +392,7 @@ def test_noninteractive():
     #test balance, deposit, withdraw
     pass
 
-#TODO: cannot choose customer without system init
-#TODO: create new user type action as admin
+#TODO: list account data from admin for a user
 if __name__=='__main__':
     #print TEMPDIR
     AccountingSystem().prompt()
